@@ -85,19 +85,19 @@ def citygml2pgsql(filename, table_name, srid, lod, geometry_column="geom", build
     geom_types = buildingGeomTypes(root, [lod])
 
     for building in root.iter(fullName("Building", root)):
-    	building_id = building.attrib["{http://www.opengis.net/gml}id"]
-    	building_polys = []
+        building_id = building.attrib["{http://www.opengis.net/gml}id"]
+        building_polys = []
         for geom_type in geom_types:
             for geom in building.iter(geom_type):
                 dim = int(geom.get("srsDimension")) if geom.get("srsDimension") else None
                 polys = filter(None, [gmlPolygon2wkt(poly, dim) \
                             for poly in geom.iter(fullName("Polygon", building))])
-                building_polys = building_polys + polys
+                building_polys = building_polys + list(polys)
         if len(building_polys) != 0:
-            print "INSERT INTO "+table_name+"("+geometry_column + "," + building_id_column + ") VALUES ("\
+            print("INSERT INTO "+table_name+"("+geometry_column + "," + building_id_column + ") VALUES ("\
                   "'SRID="+str(srid)+\
                     "; MULTIPOLYGON("+",".join(building_polys)+\
-                    ")'::geometry, '" + str(building_id) + "' );"
+                    ")'::geometry, '" + str(building_id) + "' );")
         else:
             sys.stderr.write( 'degenerated '+geom+' gml:id="'+\
                     geom.get("{http://www.opengis.net/gml}id")+'"\n')
@@ -111,21 +111,21 @@ if __name__ == '__main__':
     if len(sys.argv) >= 3 and sys.argv[1] in ["-l", "--list"]:
         for filename in sys.argv[2:]:
             srs = set()
-            print "In", filename
+            print("In", filename)
             with open(filename) as xml:
                 for line in xml:
                     m = re.match(r'.*srsName="([^"]+)"', line)
                     if m:
                         srs.add(m.groups()[0])
             for srid in srs:
-                print "    found reference to", srid
+                print("    found reference to", srid)
             root = etree.parse(filename)
             for geom in buildingGeomTypes(root):
-                print "    found geometries", re.sub('.*}', '', geom)
+                print("    found geometries", re.sub('.*}', '', geom))
         exit(0)
 
     if len(sys.argv) < 5:
-        print "error: wrong number of arguments (try "+sys.argv[0]+" --help)"
+        print("error: wrong number of arguments (try "+sys.argv[0]+" --help)")
         exit(1)
 
     table_name = sys.argv[-1]
